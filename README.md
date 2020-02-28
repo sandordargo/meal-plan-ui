@@ -3,6 +3,29 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 Below you will find some information on how to perform common tasks.<br>
 You can find the most recent version of this guide [here](https://github.com/facebookincubator/create-react-app/blob/master/packages/react-scripts/template/README.md).
 
+# TODO
+- Copy to calendar (934206010022-spevodeba1hcpso5i0llp7sojvsd1pp2.apps.googleusercontent.com / 5BOIGHGtcMI4Cligb5iumjZQ)
+934206010022-4f2a0rltvpfscgj4dsavvjku5h23t77f.apps.googleusercontent.com / cZmQ7XI8dG7a_T0uGpuo80BC
+AIzaSyDYLFV54aymOVY_ZKoGWV4zU6AYDYpdN9M
+- <strike>Save the date in the db?</strike>
+- <strike>check the date from db in calendar?</strike>
+- Choose another from drop down
+- add form for new recipe
+- - Name
+- - period
+- - url
+- - categories
+- deploy ui
+- select recipe directly
+- lately added recipes as suggestion
+- - Use them...
+- Remove/rename Home
+- Calendar like UI
+- Drag-drop between days https://codesandbox.io/s/mmrp44okvj
+- Plan for any week
+ 
+
+
 ## Table of Contents
 
 - [Updating to New Releases](#updating-to-new-releases)
