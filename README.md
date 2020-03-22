@@ -9,20 +9,19 @@ You can find the most recent version of this guide [here](https://github.com/fac
 AIzaSyDYLFV54aymOVY_ZKoGWV4zU6AYDYpdN9M
 - <strike>Save the date in the db?</strike>
 - <strike>check the date from db in calendar?</strike>
+- <strike>deploy ui<~strike>
+- <strike>lately added recipes as suggestion<~strike>
+- <strike>Calendar like UI<~strike>
+- <strike>Drag-drop between days https://codesandbox.io/s/mmrp44okvj<~strike>
+- <strike>Plan for any week<~strike>
 - Choose another from drop down
 - add form for new recipe
 - - Name
 - - period
 - - url
 - - categories
-- deploy ui
-- select recipe directly
-- lately added recipes as suggestion
 - - Use them...
 - Remove/rename Home
-- Calendar like UI
-- Drag-drop between days https://codesandbox.io/s/mmrp44okvj
-- Plan for any week
  
 
 

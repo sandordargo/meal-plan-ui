@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
+import Autocomplete from 'react-autocomplete-tags'
 const BE_URL = "https://meal-planner-be.herokuapp.com";
+import Chips, { Chip } from 'react-chips'
 
 /*
 TODO
@@ -17,38 +19,80 @@ DONE - clean up form after submitting
 - common sign-in/sign-out button
  */
 
+const Suggestions = [
+    {
+        label: 'Suggestions 1',
+        value: '1'
+    },
+    {
+        label: 'Suggestions 2',
+        value: '2'
+    },
+    {
+        label: 'Another suggestions',
+        value: 'X'
+    }
+];
+
 class RecipeForm extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             recipe_name: '',
             url: '',
-            categories: '',
+            categories: [],
             difficulty: '',
             period: 0,
+            chips:[],
+            suggestions: [
+            ],
         };
 
         this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
+        this.onChange = this.onChange.bind(this);
+        this.getCategoriesSuggestions = this.getCategoriesSuggestions.bind(this);
+        this.getCategoriesSuggestions();
     }
 
     handleChange(event) {
+        console.log(event);
         this.setState({
             ...this.state,
             [event.target.name]: event.target.value
         });
     }
 
+    onChange = chips => {
+        this.setState({
+            ...this.state,
+            categories: chips });
+    };
+
+    getCategoriesSuggestions() {
+        console.log("called");
+        fetch(BE_URL + '/api/categories')
+            .then(res => res.json())
+            .then(data => {
+                // console.log(data['recipes']);
+                // return  data['recipes'];
+                this.setState({
+                    ...this.state,
+                    suggestions:data['recipes']
+                })
+            });
+    }
+
     handleSubmit(event) {
         event.preventDefault();
-        const categoriesArr =  this.state.categories.split(" ");
         const obj =  {
             name: this.state.recipe_name,
             url: this.state.url,
-            categories: categoriesArr,
+            categories: this.state.categories,
             difficulty: this.state.difficulty,
             period: this.state.period,
         };
+        console.log(this.state.chips);
 
         fetch(BE_URL + '/api/recipes/', {
             method: 'POST',
@@ -63,7 +107,7 @@ class RecipeForm extends React.Component {
         this.setState({
             recipe_name: '',
             url: '',
-            categories: '',
+            categories: [],
             difficulty: '',
             period: 0,
         });
@@ -71,6 +115,9 @@ class RecipeForm extends React.Component {
 
     render() {
         return (
+<div>
+    <div>
+    </div>
             <form onSubmit={this.handleSubmit}>
                 <label>
                     Name:
@@ -82,8 +129,28 @@ class RecipeForm extends React.Component {
                 </label>
                 <label>
                     Categories:
-                    <input type="text" name="categories" value={this.state.categories} onChange={this.handleChange} />
+                    <Chips
+                        name="categories"
+                        value={this.state.categories}
+                        onChange={this.onChange}
+
+                        // fetchSuggestions={(value) => this.getCategoriesSuggestions}
+                        // fetchSuggestions={(value, callback) => {
+                        //     fetch(BE_URL + '/api/categories')
+                        //         .then(res => res.json())
+                        //         .then(data => {
+                        //             console.log(data['recipes']);
+                        //             callback(data['recipes']);
+                        //         });
+                        // }}
+                        suggestions={this.state.suggestions}
+                        fromSuggestionsOnly={false}
+                        // https://www.npmjs.com/package/react-chip-input talan
+                    />
+
                 </label>
+
+
                 <label>
                     Difficulty:
                     <select  name="difficulty" value={this.state.difficulty} onChange={this.handleChange}>
@@ -97,7 +164,9 @@ class RecipeForm extends React.Component {
                     <input type="number" name="period" value={this.state.period} onChange={this.handleChange} />
                 </label>
                 <input type="submit" value="Submit" />
+
             </form>
+</div>
         );
     }
 }
