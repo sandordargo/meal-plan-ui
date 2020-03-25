@@ -1,76 +1,40 @@
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import logo from './logo.svg';
 import './App.css';
 import ApiCalendar from 'react-google-calendar-api';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-
-
-
-const BE_URL = "https://meal-planner-be.herokuapp.com";
-// a little function to help us with reordering the result
-
-function uuidv4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
-
-function getWeekNumber(d) {
-    // Copy date so don't modify original
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    // Set to nearest Thursday: current date + 4 - current day number
-    // Make Sunday's day number 7
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
-    // Get first day of year
-    var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-    // Calculate full weeks to nearest Thursday
-    var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
-    // Return array of year and week number
-    return [d.getUTCFullYear(), weekNo];
-}
-
-function getMonday(d) {
-    d = new Date(d);
-    var day = d.getDay(),
-        diff = d.getDate() - day + (day == 0 ? -6:1); // adjust when day is sunday
-    return new Date(d.setDate(diff));
-}
+import {DragDropContext, Draggable, Droppable} from 'react-beautiful-dnd';
+import {BACKEND_URL} from "./constants";
+import {getMonday, getWeekNumber, uuidv4, uniqueCopyOf} from "./utils";
 
 const reorder = (list, startIndex, endIndex) => {
     const result = Array.from(list);
     const [removed] = result.splice(startIndex, 1);
     result.splice(endIndex, 0, removed);
-
     return result;
 };
-
 
 const move = (source, destination, droppableSource, droppableDestination) => {
     const sourceClone = Array.from(source);
     const destClone = Array.from(destination);
     console.log(sourceClone[droppableSource.index]);
-    // const [removed] = sourceClone.splice(droppableSource.index, 1);
-    let removed = {...sourceClone[droppableSource.index]};
-    removed["ids"] = uuidv4();
-
-
-    destClone.splice(droppableDestination.index, 0, removed);
-
+    // use this if you want to remove item from source list
+    // const [moved] = sourceClone.splice(droppableSource.index, 1);
+    let moved = {...sourceClone[droppableSource.index]};
+    moved["ids"] = uuidv4();
+    destClone.splice(droppableDestination.index, 0, moved);
     const result = {};
     result[droppableSource.droppableId] = sourceClone;
     result[droppableDestination.droppableId] = destClone;
-
     return result;
 };
 
-const grid = 8;
+const GRID_SIZE = 8;
 
 const getItemStyle = (isDragging, draggableStyle) => ({
     // some basic styles to make the items look a bit nicer
     userSelect: 'none',
-    padding: grid * 2,
-    margin: `0 ${grid}px 0 0`,
+    padding: GRID_SIZE * 2,
+    margin: `0 ${GRID_SIZE}px 0 0`,
 
     // change background colour if dragging
     background: isDragging ? 'lightgreen' : 'grey',
@@ -82,10 +46,10 @@ const getItemStyle = (isDragging, draggableStyle) => ({
 const getListStyle = isDraggingOver => ({
     background: isDraggingOver ? 'lightblue' : 'lightgrey',
     display: 'flex',
-    padding: grid,
+    padding: GRID_SIZE,
     overflow: 'auto',
 });
-// https://developers.google.com/calendar/v3/reference/events/insert
+
 class App extends Component {
     constructor(props){
         super(props);
@@ -100,6 +64,8 @@ class App extends Component {
         this.removeItem = this.removeItem.bind(this);
         this.nextWeek = this.nextWeek.bind(this);
         this.previousWeek = this.previousWeek.bind(this);
+        this.alreadyInPlan = this.alreadyInPlan.bind(this);
+        this.updateItems = this.updateItems.bind(this);
 
         this.state = {
             list: [],
@@ -110,190 +76,131 @@ class App extends Component {
             isLoading: 4,
             items: [],
             weekStart: getMonday(new Date()),
-    }
+        }
     }
 
-    // Fetch the list on first mount
     componentDidMount() {
         this.getList();
     }
 
-    // Retrieves the list of items from the Express app
     getList = () => {
         // 1 vega
-        fetch(BE_URL + '/api/recipes/random?categories=vega')
+        fetch(BACKEND_URL + '/api/recipes/random?categories=vega')
             .then(res => res.json())
             .then(data => {
-                let rec1 = {...data['recipes'][0]};
-                rec1['id'] = 1;
-                rec1['ids'] = rec1['_id'] + "A";
-                let rec2 = {...data['recipes'][0]};
-                rec2['id'] = 2;
-                rec2['ids'] = rec2['_id'] + "B";
-                this.setState({ vegetarianRecipe:this.state.vegetarianRecipe.concat(data['recipes'][0]), easyRecipe:this.state.easyRecipe, otherRecipe:this.state.otherRecipe, latestRecipes:this.state.latestRecipes, isLoading: this.state.isLoading -1, items: this.state.items.concat(rec2).concat(rec1)});
+                this.setState({
+                    ...this.state,
+                    vegetarianRecipe:this.state.vegetarianRecipe.concat(uniqueCopyOf(data['recipes'][0])),
+                    isLoading: this.state.isLoading -1,
+                    items: this.state.items.concat(uniqueCopyOf(data['recipes'][0])).concat(uniqueCopyOf(data['recipes'][0]))});
             });
         // 1 easy
-        fetch(BE_URL + '/api/recipes/random?difficulty=easy')
+        fetch(BACKEND_URL + '/api/recipes/random?difficulty=easy')
             .then(res => res.json())
             .then(data => {
-                let rec1 = {...data['recipes'][0]};
-                rec1['id'] = 3;
-                rec1['ids'] = rec1['_id'] + "A";
-                this.setState({ vegetarianRecipe:this.state.vegetarianRecipe, easyRecipe:this.state.easyRecipe.concat(rec1), otherRecipe:this.state.otherRecipe, latestRecipes:this.state.latestRecipes, isLoading: this.state.isLoading -1, items: this.state.items.concat(rec1) })
+                this.setState({
+                    ...this.state,
+                    easyRecipe:this.state.easyRecipe.concat(uniqueCopyOf(data['recipes'][0])),
+                    isLoading: this.state.isLoading -1,
+                    items: this.state.items.concat(uniqueCopyOf(data['recipes'][0])) })
             });
         // 1 random
-        fetch(BE_URL + '/api/recipes/random')
+        fetch(BACKEND_URL + '/api/recipes/random')
             .then(res => res.json())
             .then(data => {
-                let rec1 = {...data['recipes'][0]};
-                rec1['id'] = 4;
-                rec1['ids'] = rec1['_id'] + "A";
-
-                let rec2 = {...data['recipes'][0]};
-                rec2['id'] = 5;
-                rec2['ids'] = rec2['_id'] + "B";
-
                 this.setState({
-                    vegetarianRecipe: this.state.vegetarianRecipe,
-                    easyRecipe: this.state.easyRecipe,
-                    otherRecipe: this.state.otherRecipe.concat(data['recipes'][0]),
-                    latestRecipes: this.state.latestRecipes,
+                    ...this.state,
+                    otherRecipe: this.state.otherRecipe.concat(uniqueCopyOf(data['recipes'][0])),
                     isLoading: this.state.isLoading - 1,
-                    items: this.state.items.concat(rec1).concat(rec2) // TODO item should always be a copy of the others, deep copy...
+                    items: this.state.items.concat(uniqueCopyOf(data['recipes'][0])).concat(uniqueCopyOf(data['recipes'][0]))
                 })
             });
-        fetch(BE_URL + '/api/recipes/latest')
+        fetch(BACKEND_URL + '/api/recipes/latest')
             .then(res => res.json())
             .then(data => {
-                let rec1 = {...data['recipes'][0]};
-                rec1['ids'] = rec1['_id'] + "A";
-                let rec2 = {...data['recipes'][1]};
-                rec2['ids'] = rec2['_id'] + "B";
-                let rec3 = {...data['recipes'][2]};
-                rec3['ids'] = rec3['_id'] + "C";
-                let rec4 = {...data['recipes'][3]};
-                rec4['ids'] = rec4['_id'] + "D";
-                let rec5 = {...data['recipes'][4]};
-                rec5['ids'] = rec5['_id'] + "E";
-
-                this.setState({ vegetarianRecipe:this.state.vegetarianRecipe, easyRecipe:this.state.easyRecipe, otherRecipe:this.state.otherRecipe, latestRecipes:this.state.latestRecipes.concat(rec1).concat(rec2).concat(rec3).concat(rec4).concat(rec5), isLoading: this.state.isLoading -1, items: this.state.items })
+                this.setState({
+                    ...this.state,
+                    latestRecipes:this.state.latestRecipes.concat(uniqueCopyOf(data['recipes'][0])).concat(uniqueCopyOf(data['recipes'][1])).concat(uniqueCopyOf(data['recipes'][2])).concat(uniqueCopyOf(data['recipes'][3])).concat(uniqueCopyOf(data['recipes'][4])),
+                    isLoading: this.state.isLoading -1,
+                    })
             });
     };
 
+
+    alreadyInPlan(newId) {
+        const otherId = this.state.otherRecipe[0]['_id'];
+        const easyId = this.state.easyRecipe[0]['_id'];
+        const veggieId = this.state.vegetarianRecipe[0]['_id'];
+        return (newId === otherId || newId === easyId || newId === veggieId);
+    }
+
+    updateItems(oldId, newRecipe, numberOfDays) {
+        let items = this.state.items;
+        items = items.filter(function(obj){
+            return obj['_id'] !== oldId;
+        });
+        for (let i = 0; i < numberOfDays; i++) {
+            items = items.concat(uniqueCopyOf(newRecipe));
+        }
+        return items;
+    }
+
      getAnohterVegetarian() {
-        fetch(BE_URL + '/api/recipes/random?categories=vega')
+        fetch(BACKEND_URL + '/api/recipes/random?categories=vega')
             .then(res => res.json())
             .then(data => {
-                let oldItems = this.state.items;
-                const otherId = this.state.otherRecipe[0]['_id'];
-                const easyId = this.state.easyRecipe[0]['_id'];
-                const veggieId = this.state.vegetarianRecipe[0]['_id'];
                 const newId = data['recipes'][0]['_id'];
-                if (newId === otherId || newId === easyId) {
-                    console.log("WE ALREADY HAVE THIS ")
+                if (this.alreadyInPlan(newId)) {
+                    console.log("WE ALREADY HAVE THIS ");
                     this.getAnohterVegetarian();
                     return;
                 }
 
-
-                console.log(oldItems);
-                oldItems = oldItems.filter(function(obj){
-                   return obj['_id'] !== veggieId;
-                });
-                console.log(oldItems);
-
-                let rec1 = {...data['recipes'][0]};
-                rec1['id'] = 1;
-                rec1['ids'] = rec1['_id'] + "A";
-
-                let rec2 = {...data['recipes'][0]};
-                rec2['id'] = 2;
-                rec2['ids'] = rec2['_id'] + "B";
-                const newItems = oldItems.concat(rec1).concat(rec2);
-
-
+                const veggieId = this.state.vegetarianRecipe[0]['_id'];
                 this.setState({
+                    ...this.state,
                     vegetarianRecipe: this.state.vegetarianRecipe = Array.of(data['recipes'][0]),
-                    easyRecipe: this.state.easyRecipe,
-                    otherRecipe: this.state.otherRecipe,
-                    latestRecipes: this.state.latestRecipes,
-                    isLoading: this.state.isLoading,
-                    items: newItems
+                    items: this.updateItems(veggieId, data['recipes'][0], 2)
                 });
             });
     }
 
     getAnohterEasy() {
-        fetch(BE_URL + '/api/recipes/random?difficulty=easy')
+        fetch(BACKEND_URL + '/api/recipes/random?difficulty=easy')
             .then(res => res.json())
             .then(data => {
-                let oldItems = this.state.items;
-                const otherId = this.state.otherRecipe[0]['_id'];
-                const easyId = this.state.easyRecipe[0]['_id'];
-                const veggieId = this.state.vegetarianRecipe[0]['_id'];
                 const newId = data['recipes'][0]['_id'];
-                if (newId === otherId || newId === veggieId) {
+                if (this.alreadyInPlan(newId)) {
                     console.log("WE ALREADY HAVE THIS ")
                     this.getAnohterEasy();
                     return;
                 }
-                console.log(oldItems);
-                oldItems = oldItems.filter(function(obj){
-                    return obj['_id'] !== easyId;
-                });
-                console.log(oldItems);
-                let rec1 = {...data['recipes'][0]};
-                rec1['id'] = 3;
-                rec1['ids'] = rec1['_id'] + "A";
-                const newItems = oldItems.concat(rec1);
-                console.log(rec1);
-                console.log(oldItems);
-                console.log(newItems);
+
+                const easyId = this.state.easyRecipe[0]['_id'];
                 this.setState({
-                    vegetarianRecipe: this.state.vegetarianRecipe,
+                    ...this.state,
                     easyRecipe: this.state.easyRecipe = Array.of(data['recipes'][0]),
-                    otherRecipe: this.state.otherRecipe,
-                    latestRecipes: this.state.latestRecipes,
-                    isLoading: this.state.isLoading - 1,
-                    items: newItems
+                    items: this.updateItems(easyId, data['recipes'][0], 1)
                 });
             });
     }
 
     getAnohterOther() {
-        fetch(BE_URL + '/api/recipes/random')
+        fetch(BACKEND_URL + '/api/recipes/random')
             .then(res => res.json())
             .then(data => {
-                let oldItems = this.state.items;
-                const otherId = this.state.otherRecipe[0]['_id'];
-                const easyId = this.state.easyRecipe[0]['_id'];
-                const veggieId = this.state.vegetarianRecipe[0]['_id'];
                 const newId = data['recipes'][0]['_id'];
-                if (newId === easyId || newId === veggieId) {
+                if (this.alreadyInPlan(newId)) {
                     console.log("WE ALREADY HAVE THIS ")
                     this.getAnohterOther();
                     return;
                 }
 
-                oldItems = oldItems.filter(function(obj){
-                    return obj['_id'] !== otherId;
-                });
-                let rec1 = {...data['recipes'][0]};
-                rec1['id'] = 4;
-                rec1['ids'] = rec1['_id'] + "A";
-
-                let rec2 = {...data['recipes'][0]};
-                rec2['id'] = 5;
-                rec2['ids'] = rec2['_id'] + "B";
-                const newItems = oldItems.concat(rec1).concat(rec2);
-
+                const otherId = this.state.otherRecipe[0]['_id'];
                 this.setState({
-                    vegetarianRecipe: this.state.vegetarianRecipe,
-                    easyRecipe: this.state.easyRecipe,
+                    ...this.state,
                     otherRecipe: this.state.otherRecipe = Array.of(data['recipes'][0]),
-                    latestRecipes: this.state.latestRecipes,
-                    isLoading: this.state.isLoading - 1,
-                    items: newItems
+                    items: this.updateItems(otherId, data['recipes'][0], 2)
                 });
             });
     }
@@ -307,23 +214,21 @@ class App extends Component {
     }
 
     nextWeek() {
-        let newState = Object.assign({}, this.state);
         let date = new Date();
-        date.setTime(newState.weekStart.getTime() + (7*24*60*60*1000));
-        newState.weekStart = date
-        console.log(this.state);
-        console.log(newState);
-        this.setState(newState);
+        date.setTime(this.state.weekStart.getTime() + (7*24*60*60*1000));
+        this.setState({
+            ...this.state,
+            weekStart: date,
+        });
     }
 
     previousWeek() {
-        let newState = Object.assign({}, this.state);
         let date = new Date();
-        date.setTime(newState.weekStart.getTime() - (7*24*60*60*1000));
-        newState.weekStart = date
-        console.log(this.state);
-        console.log(newState);
-        this.setState(newState);
+        date.setTime(this.state.weekStart.getTime() - (7*24*60*60*1000));
+        this.setState({
+            ...this.state,
+            weekStart: date,
+        });
     }
 
     makeEvent(startDate, numberOfDays, recipe) {
@@ -331,7 +236,6 @@ class App extends Component {
          let endDate = startDate;
          endDate.setDate(startDate.getDate() + numberOfDays);
          const endDateStr = endDate.toISOString().split('T')[0];
-
 
         return {
             'summary': recipe.name,
@@ -350,7 +254,7 @@ class App extends Component {
         let date = new Date(startDate);
         date.setDate(date.getDate() + period); // Set now + 30 days as the new date
         const nextDateStr =  date.toISOString().split('T')[0];
-        fetch(BE_URL + '/api/recipes/update_next', {
+        fetch(BACKEND_URL + '/api/recipes/update_next', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
@@ -364,11 +268,11 @@ class App extends Component {
     }
 
     createEventInCalendar(startDate, numberOfDays, recipe) {
+        // https://developers.google.com/calendar/v3/reference/events/insert
         ApiCalendar.createEvent(this.makeEvent(startDate, numberOfDays,  recipe))
             .then((result: object) => {
                 console.log(result);
                 this.updateDatabaseWithDate(startDate, numberOfDays, recipe);
-
             })
             .catch((error: any) => {
                 console.log(error);
@@ -376,53 +280,32 @@ class App extends Component {
     }
 
     addToCalendar() {
-
         this.state.items.forEach((item, index) => {
             setTimeout(() =>{
                 let day = new Date(this.state.weekStart);
                 day.setTime(day.getTime() + (index*24*60*60*1000));
-                console.log(index);
-                console.log(day);
                 this.createEventInCalendar(day, 1,  item);
             }, 250*(index));
         });
     }
 
     id2List = {
-        droppable: 'items',
-        droppable2: 'latestRecipes'
+        mealPlan: 'items',
+        latestRecipes: 'latestRecipes'
     };
+    state;
 
     getDragList = id => this.state[this.id2List[id]];
     removeItem = (index) => {
         let splicedItems =this.state.items;
-        splicedItems.splice(index, 1)
-        console.log(splicedItems);
+        splicedItems.splice(index, 1);
         this.setState({
-            vegetarianRecipe: this.state.vegetarianRecipe,
-            easyRecipe: this.state.easyRecipe,
-            otherRecipe: this.state.otherRecipe,
-            latestRecipes: this.state.latestRecipes,
-            isLoading: this.state.isLoading - 1,
+            ...this.state,
             items: splicedItems
         })
     };
 
     onDragEnd(result) {
-        // // dropped outside the list
-        // if (!result.destination) {
-        //     return;
-        // }
-        //
-        // const items = reorder(
-        //     this.state.items,
-        //     result.source.index,
-        //     result.destination.index
-        // );
-        //
-        // this.setState({
-        //     items,
-        // });
         const { source, destination } = result;
 
         // dropped outside the list
@@ -439,7 +322,7 @@ class App extends Component {
 
             let state = { items };
 
-            if (source.droppableId === 'droppable2') {
+            if (source.droppableId === 'latestRecipes') {
                 state = { latestRecipes: items };
             }
 
@@ -453,22 +336,17 @@ class App extends Component {
             );
 
             this.setState({
-                items: result.droppable,
-                latestRecipes: result.droppable2
+                items: result.mealPlan,
+                latestRecipes: result.latestRecipes
             });
         }
     }
 
   render() {
-
-      const { list, vegetarianRecipe, easyRecipe, otherRecipe, latestRecipes, isLoading } = this.state;
-
-      if (isLoading > 0) {
+      if (this.state.isLoading > 0) {
           return null;
       }
 
-      console.log(this.state.items);
-      let cw = "45";
       return (
       <div className="App">
         <div className="App-header">
@@ -493,7 +371,7 @@ class App extends Component {
           </button>
 
           <DragDropContext onDragEnd={this.onDragEnd}>
-              <Droppable droppableId="droppable" direction="horizontal">
+              <Droppable droppableId="mealPlan" direction="horizontal">
                   {(provided, snapshot) => (
                       <table  ref={provided.innerRef}
                           style={getListStyle(snapshot.isDraggingOver)}>
@@ -510,7 +388,6 @@ class App extends Component {
                           {this.state.items.map((item, index) => (
                               <Draggable key={item.ids} draggableId={item.ids} index={index}>
                                   {(provided, snapshot) => (
-
                                       <td
                                           ref={provided.innerRef}
                                           {...provided.draggableProps}
@@ -524,10 +401,7 @@ class App extends Component {
                                           <button onClick = {() => this.removeItem(index)}>
                                               Remove
                                           </button>
-                                          {/*<td style={{ width: "120px" }}>{item.content}</td>*/}
-                                          {/*<td style={{ width: "120px" }}>{item.test}</td>*/}
                                       </td>
-
                                   )}
                               </Draggable>
                           ))}
@@ -536,34 +410,10 @@ class App extends Component {
                           </tbody>
                           </thead>
                           </table>
-                      // <div
-                      //     ref={provided.innerRef}
-                      //     style={getListStyle(snapshot.isDraggingOver)}
-                      //     {...provided.droppableProps}
-                      // >
-                      //     {this.state.items.map((item, index) => (
-                      //         <Draggable key={item.id} draggableId={item.id} index={index}>
-                      //             {(provided, snapshot) => (
-                      //                 <div
-                      //                     ref={provided.innerRef}
-                      //                     {...provided.draggableProps}
-                      //                     {...provided.dragHandleProps}
-                      //                     style={getItemStyle(
-                      //                         snapshot.isDragging,
-                      //                         provided.draggableProps.style
-                      //                     )}
-                      //                 >
-                      //                     {item.content}
-                      //                 </div>
-                      //             )}
-                      //         </Draggable>
-                      //     ))}
-                      //     {provided.placeholder}
-                      // </div>
                   )}
               </Droppable>
 
-              <Droppable droppableId="droppable2">
+              <Droppable droppableId="latestRecipes">
                   {(provided, snapshot) => (
                       <div
                           ref={provided.innerRef}
@@ -622,15 +472,6 @@ class App extends Component {
                   >
                       Add To Calendar
                   </button>
-                  <p></p>
-                  Latest Recipes
-                  {latestRecipes.map((item) => {
-                      return(
-                          <div>
-                              {item.name} : {item.categories}
-                          </div>
-                      );
-                  })}
               </div>
       </div>
     );

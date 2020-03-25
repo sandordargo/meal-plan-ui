@@ -1,38 +1,13 @@
-import React, { Component } from 'react';
-import Autocomplete from 'react-autocomplete-tags'
-const BE_URL = "https://meal-planner-be.herokuapp.com";
-import Chips, { Chip } from 'react-chips'
+import React from 'react';
+import Chips from 'react-chips'
+import {BACKEND_URL} from "./constants";
 
 /*
 TODO
-- BE_URL at one central place
-- fields are vertical
-- pass remarks
-- clean up code
 - URL validator https://goshakkk.name/instant-form-fields-validation-react/
-DONE - difficulty from drop down list
-DONE - clean up form after submitting
-- categories?
-- - needs multiple selection
-- - from where should I manage categories?
-- deploy
 - common sign-in/sign-out button
  */
 
-const Suggestions = [
-    {
-        label: 'Suggestions 1',
-        value: '1'
-    },
-    {
-        label: 'Suggestions 2',
-        value: '2'
-    },
-    {
-        label: 'Another suggestions',
-        value: 'X'
-    }
-];
 
 class RecipeForm extends React.Component {
     constructor(props) {
@@ -43,6 +18,7 @@ class RecipeForm extends React.Component {
             categories: [],
             difficulty: '',
             period: 0,
+            notes: "",
             chips:[],
             suggestions: [
             ],
@@ -50,32 +26,28 @@ class RecipeForm extends React.Component {
 
         this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
-        this.onChange = this.onChange.bind(this);
+        this.onChipsChange = this.onChipsChange.bind(this);
         this.getCategoriesSuggestions = this.getCategoriesSuggestions.bind(this);
         this.getCategoriesSuggestions();
     }
 
     handleChange(event) {
-        console.log(event);
         this.setState({
             ...this.state,
             [event.target.name]: event.target.value
         });
     }
 
-    onChange = chips => {
+    onChipsChange = chips => {
         this.setState({
             ...this.state,
             categories: chips });
     };
 
     getCategoriesSuggestions() {
-        console.log("called");
-        fetch(BE_URL + '/api/categories')
+        fetch(BACKEND_URL + '/api/categories')
             .then(res => res.json())
             .then(data => {
-                // console.log(data['recipes']);
-                // return  data['recipes'];
                 this.setState({
                     ...this.state,
                     suggestions:data['recipes']
@@ -85,22 +57,22 @@ class RecipeForm extends React.Component {
 
     handleSubmit(event) {
         event.preventDefault();
-        const obj =  {
+        const newRecipe =  {
             name: this.state.recipe_name,
             url: this.state.url,
             categories: this.state.categories,
             difficulty: this.state.difficulty,
             period: this.state.period,
+            notes: this.state.notes,
         };
-        console.log(this.state.chips);
 
-        fetch(BE_URL + '/api/recipes/', {
+        fetch(BACKEND_URL + '/api/recipes/', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(obj)
+            body: JSON.stringify(newRecipe)
         }).then(res => {
             console.log(res);
         });
@@ -110,47 +82,37 @@ class RecipeForm extends React.Component {
             categories: [],
             difficulty: '',
             period: 0,
+            chips:[],
+            notes: "",
+            suggestions: this.state.suggestions,
         });
     }
 
     render() {
         return (
-<div>
-    <div>
-    </div>
+        <div>
             <form onSubmit={this.handleSubmit}>
                 <label>
                     Name:
                     <input type="text" name="recipe_name" value={this.state.recipe_name} onChange={this.handleChange} />
                 </label>
+                <br/>
                 <label>
                     URL:
                     <input type="text" name="url" value={this.state.url} onChange={this.handleChange} />
                 </label>
+                <br/>
                 <label>
                     Categories:
                     <Chips
                         name="categories"
                         value={this.state.categories}
-                        onChange={this.onChange}
-
-                        // fetchSuggestions={(value) => this.getCategoriesSuggestions}
-                        // fetchSuggestions={(value, callback) => {
-                        //     fetch(BE_URL + '/api/categories')
-                        //         .then(res => res.json())
-                        //         .then(data => {
-                        //             console.log(data['recipes']);
-                        //             callback(data['recipes']);
-                        //         });
-                        // }}
+                        onChange={this.onChipsChange}
                         suggestions={this.state.suggestions}
                         fromSuggestionsOnly={false}
-                        // https://www.npmjs.com/package/react-chip-input talan
                     />
-
                 </label>
-
-
+                <br/>
                 <label>
                     Difficulty:
                     <select  name="difficulty" value={this.state.difficulty} onChange={this.handleChange}>
@@ -159,14 +121,20 @@ class RecipeForm extends React.Component {
                         <option selected value="hard">Hard</option>
                     </select>
                 </label>
+                <br/>
                 <label>
                     Period:
                     <input type="number" name="period" value={this.state.period} onChange={this.handleChange} />
                 </label>
+                <br/>
+                <label>
+                    Notes:
+                    <input type="text" name="notes" value={this.state.notes} onChange={this.handleChange} />
+                </label>
+                <br/>
                 <input type="submit" value="Submit" />
-
             </form>
-</div>
+        </div>
         );
     }
 }
