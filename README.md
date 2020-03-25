@@ -1,4 +1,4 @@
-![](https://github.com/sandordargo/meal-plan-ui/workflows/nodejs.yml/badge.svg)
+![](https://github.com/sandordargo/meal-plan-ui/workflows/Node.js%20CI/badge.svg)
 
 This project was bootstrapped with [Create React App](https://github.com/facebookincubator/create-react-app).
 
