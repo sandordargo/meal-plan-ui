@@ -8,27 +8,45 @@ TODO
 - common sign-in/sign-out button
  */
 
+const initialState = {
+    _id: '',
+    recipe_name: '',
+    url: '',
+    categories: [],
+    difficulty: 'easy',
+    period: 60,
+    notes: "",
+    chips:[],
+    suggestions: [
+    ],
+    editing_mode: false,
+};
 
 class RecipeForm extends React.Component {
     constructor(props) {
         super(props);
-        this.state = {
-            recipe_name: '',
-            url: '',
-            categories: [],
-            difficulty: '',
-            period: 0,
-            notes: "",
-            chips:[],
-            suggestions: [
-            ],
-        };
+        this.state = initialState;
+
+        if (typeof this.props.location.state !== 'undefined') {
+            this.state = {
+                ...this.state,
+                _id:this.props.location.state.recipe._id,
+                recipe_name:this.props.location.state.recipe.name,
+                url:this.props.location.state.recipe.url,
+                period:this.props.location.state.recipe.period,
+                difficulty:this.props.location.state.recipe.difficulty,
+                categories:this.props.location.state.recipe.categories,
+                notes:this.props.location.state.recipe.notes,
+                editing_mode: true
+            };
+        }
+
 
         this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
         this.onChipsChange = this.onChipsChange.bind(this);
         this.getCategoriesSuggestions = this.getCategoriesSuggestions.bind(this);
-        this.getCategoriesSuggestions();
+        this.cancel = this.cancel.bind(this);
     }
 
     handleChange(event) {
@@ -55,9 +73,9 @@ class RecipeForm extends React.Component {
             });
     }
 
-    handleSubmit(event) {
+    handleSubmit(event, addMore = false) {
         event.preventDefault();
-        const newRecipe =  {
+        let newRecipe =  {
             name: this.state.recipe_name,
             url: this.state.url,
             categories: this.state.categories,
@@ -66,25 +84,49 @@ class RecipeForm extends React.Component {
             notes: this.state.notes,
         };
 
-        fetch(BACKEND_URL + '/api/recipes/', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(newRecipe)
-        }).then(res => {
-            console.log(res);
-        });
-        this.setState({
-            recipe_name: '',
-            url: '',
-            categories: [],
-            difficulty: '',
-            period: 0,
-            chips:[],
-            notes: "",
-            suggestions: this.state.suggestions,
+        if (!this.state.editing_mode) {
+            fetch(BACKEND_URL + '/api/recipes/', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newRecipe)
+            }).then(res => {
+                console.log(res);
+            });
+            if (addMore) {
+                this.setState(initialState);
+            } else {
+                this.props.history.push({
+                    pathname: '/',
+                });
+            }
+
+        } else {
+           newRecipe['_id']=this.state._id;
+           console.log(newRecipe);
+            fetch(BACKEND_URL + '/api/recipes/edit', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newRecipe)
+            }).then(res => {
+                console.log(res);
+                this.props.history.push({
+                    pathname: '/',
+                });
+            });
+        }
+
+    }
+
+    cancel() {
+        console.log();
+        this.props.history.push({
+            pathname: '/',
         });
     }
 
@@ -132,7 +174,9 @@ class RecipeForm extends React.Component {
                     <input type="text" name="notes" value={this.state.notes} onChange={this.handleChange} />
                 </label>
                 <br/>
-                <input type="submit" value="Submit" />
+                <input type="button" value="Cancel" onClick={this.cancel} />
+                <input type="submit" value="Add" />
+                <input type="button" value="Add More" onClick={(event) => this.handleSubmit(event, true)} />
             </form>
         </div>
         );
