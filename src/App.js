@@ -5,6 +5,11 @@ import ApiCalendar from 'react-google-calendar-api';
 import {DragDropContext, Draggable, Droppable} from 'react-beautiful-dnd';
 import {BACKEND_URL} from "./constants";
 import {getMonday, getWeekNumber, uuidv4, uniqueCopyOf} from "./utils";
+import Container from "react-bootstrap/Container";
+import Row from "react-bootstrap/Row"
+import Col from "react-bootstrap/Col"
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 
 const reorder = (list, startIndex, endIndex) => {
     const result = Array.from(list);
@@ -30,6 +35,19 @@ const move = (source, destination, droppableSource, droppableDestination) => {
 
 const GRID_SIZE = 8;
 
+const getItemStyleWithIndex = (isDragging, draggableStyle, index) => ({
+    // some basic styles to make the items look a bit nicer
+    userSelect: 'none',
+    padding: GRID_SIZE * 2,
+    margin: `0 ${GRID_SIZE}px 0 0`,
+
+    // change background colour if dragging
+    background: isDragging ? 'lightgreen' : index > 4 ? 'red' : 'grey',
+
+    // styles we need to apply on draggables
+    ...draggableStyle,
+});
+
 const getItemStyle = (isDragging, draggableStyle) => ({
     // some basic styles to make the items look a bit nicer
     userSelect: 'none',
@@ -43,12 +61,12 @@ const getItemStyle = (isDragging, draggableStyle) => ({
     ...draggableStyle,
 });
 
-const getListStyle = isDraggingOver => ({
-    background: isDraggingOver ? 'lightblue' : 'lightgrey',
-    display: 'flex',
-    padding: GRID_SIZE,
-    overflow: 'auto',
-});
+// const getListStyle = isDraggingOver => ({
+//     background: isDraggingOver ? 'lightblue' : 'lightgrey',
+//     display: 'flex',
+//     padding: GRID_SIZE,
+//     overflow: 'auto',
+// });
 
 class App extends Component {
     constructor(props){
@@ -56,7 +74,6 @@ class App extends Component {
         this.getAnohterVegetarian = this.getAnohterVegetarian.bind(this);
         this.getAnohterEasy = this.getAnohterEasy.bind(this);
         this.getAnohterOther = this.getAnohterOther.bind(this);
-        this.handleItemClick = this.handleItemClick.bind(this);
         this.addToCalendar = this.addToCalendar.bind(this);
         this.updateDatabaseWithDate = this.updateDatabaseWithDate.bind(this);
         this.onDragEnd = this.onDragEnd.bind(this);
@@ -66,6 +83,12 @@ class App extends Component {
         this.previousWeek = this.previousWeek.bind(this);
         this.alreadyInPlan = this.alreadyInPlan.bind(this);
         this.updateItems = this.updateItems.bind(this);
+        this.getCategoriesSuggestions = this.getCategoriesSuggestions.bind(this);
+        this.handleCheckbox = this.handleCheckbox.bind(this);
+        this.retrieveRecipes = this.retrieveRecipes.bind(this);
+        this.lastPrepared = this.lastPrepared.bind(this);
+        this.handlePageChange = this.handlePageChange.bind(this);
+        this.delete = this.delete.bind(this);
 
         this.state = {
             list: [],
@@ -73,9 +96,11 @@ class App extends Component {
             easyRecipe: [],
             otherRecipe: [],
             latestRecipes: [],
-            isLoading: 4,
+            isLoading: 5,
             items: [],
             weekStart: getMonday(new Date()),
+            suggestions:{},
+            listedRecipes:[]
         }
     }
 
@@ -124,6 +149,7 @@ class App extends Component {
                     isLoading: this.state.isLoading -1,
                     })
             });
+        this.getCategoriesSuggestions();
     };
 
 
@@ -159,7 +185,7 @@ class App extends Component {
                 const veggieId = this.state.vegetarianRecipe[0]['_id'];
                 this.setState({
                     ...this.state,
-                    vegetarianRecipe: this.state.vegetarianRecipe = Array.of(data['recipes'][0]),
+                    vegetarianRecipe: Array.of(data['recipes'][0]),
                     items: this.updateItems(veggieId, data['recipes'][0], 2)
                 });
             });
@@ -179,7 +205,7 @@ class App extends Component {
                 const easyId = this.state.easyRecipe[0]['_id'];
                 this.setState({
                     ...this.state,
-                    easyRecipe: this.state.easyRecipe = Array.of(data['recipes'][0]),
+                    easyRecipe: Array.of(data['recipes'][0]),
                     items: this.updateItems(easyId, data['recipes'][0], 1)
                 });
             });
@@ -191,7 +217,7 @@ class App extends Component {
             .then(data => {
                 const newId = data['recipes'][0]['_id'];
                 if (this.alreadyInPlan(newId)) {
-                    console.log("WE ALREADY HAVE THIS ")
+                    console.log("WE ALREADY HAVE THIS ");
                     this.getAnohterOther();
                     return;
                 }
@@ -199,18 +225,10 @@ class App extends Component {
                 const otherId = this.state.otherRecipe[0]['_id'];
                 this.setState({
                     ...this.state,
-                    otherRecipe: this.state.otherRecipe = Array.of(data['recipes'][0]),
+                    otherRecipe: Array.of(data['recipes'][0]),
                     items: this.updateItems(otherId, data['recipes'][0], 2)
                 });
             });
-    }
-
-    handleItemClick(event: SyntheticEvent<any>, name: string): void {
-        if (name === 'sign-in') {
-            ApiCalendar.handleAuthClick();
-        } else if (name === 'sign-out') {
-            ApiCalendar.handleSignoutClick();
-        }
     }
 
     nextWeek() {
@@ -250,7 +268,7 @@ class App extends Component {
     }
 
     updateDatabaseWithDate(startDate, numberOfDays, recipe) {
-        const period = recipe.period ? recipe.period : 60;
+        const period = recipe.period ? parseInt(recipe.period, 10) : 60;
         let date = new Date(startDate);
         date.setDate(date.getDate() + period); // Set now + 30 days as the new date
         const nextDateStr =  date.toISOString().split('T')[0];
@@ -291,7 +309,8 @@ class App extends Component {
 
     id2List = {
         mealPlan: 'items',
-        latestRecipes: 'latestRecipes'
+        latestRecipes: 'latestRecipes',
+        listedRecipes: 'listedRecipes',
     };
     state;
 
@@ -320,10 +339,16 @@ class App extends Component {
                 destination.index
             );
 
-            let state = { items };
+            let state = { ...this.state };
 
+            if (source.droppableId === 'mealPlan') {
+                state = { items: items };
+            }
             if (source.droppableId === 'latestRecipes') {
                 state = { latestRecipes: items };
+            }
+            if (source.droppableId === 'listedRecipes') {
+                state = { listedRecipes: items };
             }
 
             this.setState(state);
@@ -335,96 +360,279 @@ class App extends Component {
                 destination
             );
 
-            this.setState({
-                items: result.mealPlan,
-                latestRecipes: result.latestRecipes
-            });
+            let state = { ...this.state };
+
+            if (source.droppableId === 'mealPlan' || destination.droppableId === 'mealPlan') {
+                state = { ...state, items: result.mealPlan };
+            }
+            if (source.droppableId === 'latestRecipes' || destination.droppableId === 'latestRecipes') {
+                state = { ...state, latestRecipes: result.latestRecipes };
+            }
+            if (source.droppableId === 'listedRecipes' || destination.droppableId === 'listedRecipes') {
+                state = { ...state, listedRecipes: result.listedRecipes};
+            }
+
+            this.setState(state);
         }
     }
+
+    getCategoriesSuggestions() {
+        fetch(BACKEND_URL + '/api/categories')
+            .then(res => res.json())
+            .then(data => {
+                this.setState({
+                    ...this.state,
+                    isLoading: this.state.isLoading -1,
+                    suggestions: data['recipes'].reduce(function(map, recipe){ map[recipe] = false; return map}, {})
+                })
+            });
+
+    }
+
 
   render() {
       if (this.state.isLoading > 0) {
           return null;
       }
+    console.log(this.state.suggestions);
+    console.log(this.state.suggestions['csirke']);
 
       return (
-      <div className="App">
-        <div className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h2>Welcome to React</h2>
-        </div>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
+          <div className="App">
+              <div className="App-header">
+                  <img src={logo} className="App-logo" alt="logo"/>
+                  <h2>Welcome to React</h2>
+              </div>
+              <Container fluid="md" >
 
-          <button
-              onClick={this.previousWeek}
-          >
-              Previous
-          </button>
-          W{getWeekNumber(this.state.weekStart)}
 
-          <button
-              onClick={this.nextWeek}
-          >
-              Next
-          </button>
+              <Row className="justify-content-md-center title" >
+                  <Col md="auto">
+                      <Row>
+                          <button onClick={this.previousWeek}>&lt;&lt;</button>
+                      </Row>
+                  </Col>
+              <Col md="auto">
+                      <Row>
+                          <h2>Your meal plan for W{getWeekNumber(this.state.weekStart)}</h2>
+                      </Row>
+              </Col>
+                  <Col md="auto">
+                      <Row>
+                          <button onClick={this.nextWeek}>
+                              &gt;&gt;
+                          </button>
+                      </Row>
 
-          <DragDropContext onDragEnd={this.onDragEnd}>
-              <Droppable droppableId="mealPlan" direction="horizontal">
-                  {(provided, snapshot) => (
-                      <table  ref={provided.innerRef}
-                          style={getListStyle(snapshot.isDraggingOver)}>
-                          <thead>
-                          <tr>
-                              <th>Monday</th>
-                              <th>Tuesday</th>
-                              <th>Wednesday</th>
-                              <th>Thursday</th>
-                              <th>Friday</th>
-                          </tr>
-                          <tbody>
-                          <tr>
-                          {this.state.items.map((item, index) => (
-                              <Draggable key={item.ids} draggableId={item.ids} index={index}>
-                                  {(provided, snapshot) => (
-                                      <td
-                                          ref={provided.innerRef}
-                                          {...provided.draggableProps}
-                                          {...provided.dragHandleProps}
-                                          style={getItemStyle(
-                                              snapshot.isDragging,
-                                              provided.draggableProps.style
+                  </Col>
+
+              </Row>
+
+              <DragDropContext onDragEnd={this.onDragEnd}>
+                  <Row className="justify-content-md-center" >
+
+                  <Droppable droppableId="mealPlan" direction="horizontal">
+                      {(provided, snapshot) => (
+                          <table ref={provided.innerRef}
+                                 >
+                              <thead>
+                              <tr className="latestTable">
+                                  <th className="difficultyColumn">Monday</th>
+                                  <th className="difficultyColumn">Tuesday</th>
+                                  <th className="difficultyColumn">Wednesday</th>
+                                  <th className="difficultyColumn">Thursday</th>
+                                  <th className="difficultyColumn">Friday</th>
+                              </tr>
+                              </thead>
+                              <tbody>
+                              <tr>
+                                  {this.state.items.map((item, index) => (
+                                      <Draggable key={item.ids} draggableId={item.ids} index={index}>
+                                          {(provided, snapshot) => (
+                                              <td
+                                                  ref={provided.innerRef}
+                                                  {...provided.draggableProps}
+                                                  {...provided.dragHandleProps}
+                                                  style={getItemStyleWithIndex(
+                                                      snapshot.isDragging,
+                                                      provided.draggableProps.style,
+                                                      index
+                                                  )}
+                                              >
+                                                  {item.name}
+                                                  <button onClick={() => this.removeItem(index)}>
+                                                      Remove
+                                                  </button>
+                                              </td>
                                           )}
-                                      >
-                                          {item.name}
-                                          <button onClick = {() => this.removeItem(index)}>
-                                              Remove
-                                          </button>
-                                      </td>
-                                  )}
-                              </Draggable>
-                          ))}
-                          {provided.placeholder}
-                          </tr>
-                          </tbody>
-                          </thead>
-                          </table>
-                  )}
-              </Droppable>
+                                      </Draggable>
+                                  ))}
+                                  {provided.placeholder}
+                              </tr>
+                              </tbody>
 
-              <Droppable droppableId="latestRecipes">
-                  {(provided, snapshot) => (
-                      <div
-                          ref={provided.innerRef}
-                          style={getListStyle(snapshot.isDraggingOver)}>
-                          {this.state.latestRecipes.map((item, index) => (
+                          </table>
+                      )}
+                  </Droppable>
+
+                  </Row>
+
+                  <Row className="justify-content-md-center" >
+                      <Col md="auto">
+                          <button onClick={this.getAnohterVegetarian}>
+                              Get Another Veggie
+                          </button>
+                      </Col>
+                      <Col md="auto">
+                          <button onClick={this.getAnohterEasy}>
+                              Get Another Easy
+                          </button>
+                      </Col>
+                      <Col md="auto">
+                          <button onClick={this.getAnohterOther}>
+                              Get Another
+                          </button>
+                      </Col>
+                      <Col md="auto">
+                          <button onClick={(e) => this.addToCalendar()}>
+                              Add To Calendar
+                          </button>
+                      </Col>
+                  </Row>
+
+
+                  <Row className="justify-content-md-center title" >
+                      <h2>Your latest recipes</h2>
+                  </Row>
+
+                  <Row className="justify-content-md-center" >
+                      <Col sm={2}>
+                      </Col>
+                      <Col sm={10}>
+                          <Droppable droppableId="latestRecipes" direction="vertical">
+                              {(provided, snapshot) => (
+                                  <table className="latestTable"
+                                  >
+                                      <thead>
+                                      <tr>
+                                          <th className="nameColumn">
+                                              Name
+                                          </th>
+                                          <th className="categoriesColumn">
+                                              Categories
+                                          </th>
+                                          <th className="difficultyColumn">
+                                              Difficulty
+                                          </th>
+                                          <th className="lastPreparedColumn">
+                                              Last prepared
+                                          </th>
+                                      </tr>
+                                      </thead>
+
+
+                                      <tbody ref={provided.innerRef}
+                                      >
+
+                                      {this.state.latestRecipes.map((recipe, index) => (
+
+                                          <Draggable
+                                              key={recipe['_id']+"l"}
+                                              draggableId={recipe['_id']+"l"}
+                                              index={index}>
+                                              {(provided, snapshot) => (
+                                                  <tr
+                                                      onClick={() => this.handlePageChange(recipe)}
+                                                      ref={provided.innerRef}
+                                                      {...provided.draggableProps}
+                                                      {...provided.dragHandleProps}
+                                                      style={getItemStyle(
+                                                          snapshot.isDragging,
+                                                          provided.draggableProps.style
+                                                      )}>
+                                                      <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}><a href={recipe['url']} target="_blank">{recipe['name']}</a></td>
+                                                      <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}>{recipe['categories'].join(" ")}</td>
+                                                      <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}>{recipe['difficulty']}</td>
+                                                      <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}>{this.lastPrepared(recipe['next_earliest'],recipe['period'])}</td>
+                                                      <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}><button onClick={(e) => this.handlePageChange(recipe)}>
+                                                          E
+                                                      </button></td>
+                                                      <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}><button onClick={(e) => this.delete(recipe)}>
+                                                          D
+                                                      </button></td>
+
+                                                  </tr>
+                                              )}
+                                          </Draggable>
+                                      ))}
+                                      {provided.placeholder}
+                                      </tbody>
+
+
+                                  </table>
+                              )}
+                          </Droppable>
+                      </Col>
+                  </Row>
+
+                   <Row className="justify-content-md-center title" >
+                      <h2>A selection of your recipes</h2>
+                  </Row>
+
+                  <Row className="justify-content-md-center" >
+
+                  <Col sm={2}>
+
+                          {Object.keys(this.state.suggestions).map((k, i) => (
+                              <div>
+                              <label>{k}</label>
+                              <input type="checkbox" defaultChecked={this.state.suggestions[k]} name={k} onChange={(event) => this.handleCheckbox(k, event)}/>
+                              </div>
+                              )
+                              // <p> {k} : {this.state.suggestions[k].toString()}</p>)
+                          )}
+
+                      <button
+                          onClick={(e) => this.retrieveRecipes()}
+                      >
+                          Retrieve recipes
+                      </button>
+                  </Col>
+                  <Col sm={10}>
+                  <Droppable droppableId="listedRecipes" direction="vertical">
+                      {(provided, snapshot) => (
+                      <table className="selectionTable">
+                      <thead>
+                      <tr>
+                          <th className="nameColumn">
+                              Name
+                          </th>
+                          <th className="categoriesColumn">
+                              Categories
+                          </th>
+                          <th className="difficultyColumn">
+                              Difficulty
+                          </th>
+                          <th className="lastPreparedColumn">
+                              Last prepared
+                          </th>
+                      </tr>
+                      </thead>
+
+
+                        <tbody ref={provided.innerRef}
+                                  >
+
+                          {this.state.listedRecipes.map((recipe, index) => (
+
                               <Draggable
-                                  key={item.ids}
-                                  draggableId={item.ids}
+                                  key={recipe['_id']}
+                                  draggableId={recipe['_id']}
                                   index={index}>
                                   {(provided, snapshot) => (
-                                      <div
+
+                                      <tr
+                                          // onClick={() => this.handlePageChange(recipe)}
                                           ref={provided.innerRef}
                                           {...provided.draggableProps}
                                           {...provided.dragHandleProps}
@@ -432,50 +640,122 @@ class App extends Component {
                                               snapshot.isDragging,
                                               provided.draggableProps.style
                                           )}>
-                                          {item.name} : {item.categories}
-                                      </div>
+                                          <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}><a href={recipe['url']} target="_blank">{recipe['name']}</a></td>
+                                          <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}>{recipe['categories'].join(" ")}</td>
+                                          <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}>{recipe['difficulty']}</td>
+                                          <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}>{this.lastPrepared(recipe['next_earliest'],recipe['period'])}</td>
+                                          <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}><button onClick={(e) => this.handlePageChange(recipe)}>
+                                              E
+                                          </button></td>
+                                          <td className={((index % 2 === 0)) ? "Even-Row" : "Other-Row"}><button onClick={(e) => this.delete(recipe)}>
+                                              D
+                                          </button></td>
+
+
+                                      </tr>
                                   )}
                               </Draggable>
                           ))}
                           {provided.placeholder}
-                      </div>
-                  )}
-              </Droppable>
+                        </tbody>
+
+
+                  </table>
+                      )}
+                  </Droppable>
+                          </Col>
+                  </Row>
+
           </DragDropContext>
+          </Container>
 
+          </div>
+      );
+      // <!-- make this drap droppable-->
+      //<!-- make this editable-->
 
-              <div>
-                  <button onClick={this.getAnohterVegetarian}>
-                      Get Another Veggie
-                  </button>
-                  <p></p>
-                  <button onClick={this.getAnohterEasy}>
-                      Get Another Easy
-                  </button>
-                  <p></p>
-                  <button onClick={this.getAnohterOther}>
-                      Get Another
-                  </button>
-                  <p></p>
-                  <button
-                      onClick={(e) => this.handleItemClick(e, 'sign-in')}
-                  >
-                      sign-in
-                  </button>
-                  <button
-                      onClick={(e) => this.handleItemClick(e, 'sign-out')}
-                  >
-                      sign-out
-                  </button>
-                  <button
-                      onClick={(e) => this.addToCalendar()}
-                  >
-                      Add To Calendar
-                  </button>
-              </div>
-      </div>
-    );
   }
+
+    handlePageChange(recipe) {
+        this.props.history.push({
+            pathname: '/editRecipe',
+            state: {
+                recipe: recipe
+            }
+        });
+        // console.log('redirect');
+        // return <Redirect to='/newrecipe'/>;
+    }
+
+
+    lastPrepared(nextEarliest, period) {
+        period = parseInt(period, 10);
+        if (period && nextEarliest) {
+            let date = new Date(nextEarliest);
+            date.setDate(date.getDate() - period); // Set now + 30 days as the new date
+            return  date.toISOString().split('T')[0];
+        }
+        return "N/A";
+    }
+
+    handleCheckbox(key, event) {
+        console.log(key);
+        console.log(event.target.value);
+        let ns = {...this.state.suggestions};
+        ns[key] = !ns[key];
+        this.setState({
+            ...this.state,
+            suggestions:ns
+        })
+
+    }
+
+    retrieveRecipes() {
+        let categoriesStr  = "?categories=";
+        let any = false;
+        Object.keys(this.state.suggestions).forEach((k, i) => {
+            if (this.state.suggestions[k] === true) {
+                if (any === true) {
+                    categoriesStr +=',';
+                }
+                categoriesStr += k;
+                any = true;
+
+            }
+        });
+        if (!any) {
+            categoriesStr = "";
+        }
+
+
+        fetch(BACKEND_URL + '/api/anyrecipe' + categoriesStr)
+            .then(res => res.json())
+            .then(data => {
+                console.log(data);
+                this.setState({
+                    ...this.state,
+                    listedRecipes: data['recipes']
+                });
+             });
+            
+    }
+
+    delete(recipe) {
+        fetch(BACKEND_URL + '/api/recipes/delete', {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(recipe)
+        }).then(res => {
+            console.log(res);
+            const index = this.state.listedRecipes.indexOf(recipe);
+            if (index !== -1) { this.state.listedRecipes.splice(index, 1); }
+            this.setState({ state: this.state });
+        });
+    }
 }
+
 
 export default App;

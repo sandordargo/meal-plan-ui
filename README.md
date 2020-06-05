@@ -24,6 +24,9 @@ AIzaSyDYLFV54aymOVY_ZKoGWV4zU6AYDYpdN9M
 - - categories
 - - Use them...
 - Remove/rename Home
+- Load in recipes
+- Edit recipes
+- Add anything
  
 
 

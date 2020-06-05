@@ -1,6 +1,6 @@
 export function uuidv4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & (0x3 | 0x8));
         return v.toString(16);
     });
 }
@@ -17,8 +17,8 @@ export function getWeekNumber(d) {
 
 export function getMonday(d) {
     d = new Date(d);
-    var day = d.getDay(),
-        diff = d.getDate() - day + (day == 0 ? -6 : 1); // adjust when day is sunday
+    const day = d.getDay(),
+        diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
     return new Date(d.setDate(diff));
 }
 
