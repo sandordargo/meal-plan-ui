@@ -1,5 +1,4 @@
 import React, {Component} from 'react';
-import logo from './logo.svg';
 import './App.css';
 import ApiCalendar from 'react-google-calendar-api';
 import {DragDropContext, Draggable, Droppable} from 'react-beautiful-dnd';
@@ -101,6 +100,31 @@ class App extends Component {
             weekStart: getMonday(new Date()),
             suggestions:{},
             listedRecipes:[]
+        };
+        if (typeof this.props.location !== 'undefined' && typeof this.props.location.state !== 'undefined' && typeof this.props.location.state.recipe !== 'undefined') {
+
+            fetch(BACKEND_URL + '/api/recipes/latest?limit=1')
+                .then(res => res.json())
+                .then(data => {
+                    this.setState({
+                        ...this.state,
+                        latestRecipes: data['recipes'].map(r => uniqueCopyOf(r)),
+                    })
+                });
+        }
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        console.log("did update");
+        console.log(prevProps);
+        console.log(prevState);
+        if (typeof this.props.location.state !== 'undefined') {
+            console.log("lolo");
+            console.log(this.props.location.state.refresh);
+            // this.setState({
+            //     ...this.state,
+            //     latestRecipes:this.state.latestRecipes.concat(this.props.location.state.recipe),
+            // });
         }
     }
 
@@ -140,12 +164,12 @@ class App extends Component {
                     items: this.state.items.concat(uniqueCopyOf(data['recipes'][0])).concat(uniqueCopyOf(data['recipes'][0]))
                 })
             });
-        fetch(BACKEND_URL + '/api/recipes/latest')
+        fetch(BACKEND_URL + '/api/recipes/latest?limit=10')
             .then(res => res.json())
             .then(data => {
                 this.setState({
                     ...this.state,
-                    latestRecipes:this.state.latestRecipes.concat(uniqueCopyOf(data['recipes'][0])).concat(uniqueCopyOf(data['recipes'][1])).concat(uniqueCopyOf(data['recipes'][2])).concat(uniqueCopyOf(data['recipes'][3])).concat(uniqueCopyOf(data['recipes'][4])),
+                    latestRecipes: data['recipes'].map(r => uniqueCopyOf(r)),
                     isLoading: this.state.isLoading -1,
                     })
             });
@@ -312,7 +336,6 @@ class App extends Component {
         latestRecipes: 'latestRecipes',
         listedRecipes: 'listedRecipes',
     };
-    state;
 
     getDragList = id => this.state[this.id2List[id]];
     removeItem = (index) => {
@@ -400,8 +423,7 @@ class App extends Component {
       return (
           <div className="App">
               <div className="App-header">
-                  <img src={logo} className="App-logo" alt="logo"/>
-                  <h2>Welcome to React</h2>
+                  <h2>Meal planner</h2>
               </div>
               <Container fluid="md" >
 
@@ -534,7 +556,7 @@ class App extends Component {
                                       <tbody ref={provided.innerRef}
                                       >
 
-                                      {this.state.latestRecipes.map((recipe, index) => (
+                                      {this.state.latestRecipes.slice(0, 5).map((recipe, index) => (
 
                                           <Draggable
                                               key={recipe['_id']+"l"}
@@ -542,7 +564,7 @@ class App extends Component {
                                               index={index}>
                                               {(provided, snapshot) => (
                                                   <tr
-                                                      onClick={() => this.handlePageChange(recipe)}
+                                                      // onClick={() => this.handlePageChange(recipe)}
                                                       ref={provided.innerRef}
                                                       {...provided.draggableProps}
                                                       {...provided.dragHandleProps}
@@ -752,6 +774,8 @@ class App extends Component {
             console.log(res);
             const index = this.state.listedRecipes.indexOf(recipe);
             if (index !== -1) { this.state.listedRecipes.splice(index, 1); }
+            const latestRecipesIndex = this.state.latestRecipes.indexOf(recipe);
+            if (latestRecipesIndex !== -1) { this.state.latestRecipes.splice(latestRecipesIndex, 1); }
             this.setState({ state: this.state });
         });
     }
