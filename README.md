@@ -1,3 +1,5 @@
+![](https://github.com/sandordargo/meal-plan-ui/workflows/Node.js%20CI/badge.svg)
+
 This project was bootstrapped with [Create React App](https://github.com/facebookincubator/create-react-app).
 
 Below you will find some information on how to perform common tasks.<br>
@@ -22,7 +24,18 @@ AIzaSyDYLFV54aymOVY_ZKoGWV4zU6AYDYpdN9M
 - - categories
 - - Use them...
 - Remove/rename Home
+- Load in recipes
+- Edit recipes
+- Add anything
  
+format for categories? 
+Remove one latest and list is not 5
+
+
+Edit from latest, doesn't save...
+Try to read meals from calendar?
+Save meals in own db?
+nicer..
 
 
 ## Table of Contents
