@@ -28,6 +28,14 @@ AIzaSyDYLFV54aymOVY_ZKoGWV4zU6AYDYpdN9M
 - Edit recipes
 - Add anything
  
+format for categories? 
+Remove one latest and list is not 5
+
+
+Edit from latest, doesn't save...
+Try to read meals from calendar?
+Save meals in own db?
+nicer..
 
 
 ## Table of Contents

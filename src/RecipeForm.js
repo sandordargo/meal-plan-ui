@@ -57,9 +57,10 @@ class RecipeForm extends React.Component {
     }
 
     onChipsChange = chips => {
+        const lowerChips = chips.map(chip => chip.toLowerCase());
         this.setState({
             ...this.state,
-            categories: chips });
+            categories: lowerChips });
     };
 
     getCategoriesSuggestions() {
@@ -100,6 +101,9 @@ class RecipeForm extends React.Component {
             } else {
                 this.props.history.push({
                     pathname: '/',
+                    state: {
+                        recipe: newRecipe
+                    },
                 });
             }
 
@@ -117,6 +121,9 @@ class RecipeForm extends React.Component {
                 console.log(res);
                 this.props.history.push({
                     pathname: '/',
+                    state: {
+                        refresh: true
+                    },
                 });
             });
         }
